@@ -1,4 +1,4 @@
-package database;
+package entitymanager;
 
 
 import java.sql.Connection;
