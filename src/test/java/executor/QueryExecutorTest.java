@@ -26,7 +26,7 @@ class QueryExecutorTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        connection = DriverManager.getConnection("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1");
+        connection = DriverManager.getConnection("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "SA", "");
         executor = new QueryExecutor(connection);
 
         try (Statement stmt = connection.createStatement()) {
