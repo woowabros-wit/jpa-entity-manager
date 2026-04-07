@@ -1,5 +1,6 @@
 package persistence;
 
+
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -16,5 +17,13 @@ public class SimpleEntityManager {
 
     public void close() throws SQLException {
         connection.close();
+    }
+
+    public PersistenceContext getPersistenceContext() {
+        return new PersistenceContext();
+    }
+
+    public Transaction getTransaction() {
+        return new Transaction(connection);
     }
 }
