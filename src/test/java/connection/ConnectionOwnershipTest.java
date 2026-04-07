@@ -44,7 +44,7 @@ class ConnectionOwnershipTest {
         Connection connection = DriverManager.getConnection(
             "jdbc:h2:mem:test", "sa", ""
         );
-₩        ddl(connection, "CREATE TABLE users (id BIGINT, name VARCHAR(255), age INT)");
+        ddl(connection, "CREATE TABLE users (id BIGINT, name VARCHAR(255), age INT)");
 
         // When: 하위 컴포넌트가 Connection 사용
         QueryExecutor executor = new QueryExecutor(connection);
