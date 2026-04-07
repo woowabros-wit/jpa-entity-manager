@@ -67,4 +67,10 @@ public class QueryExecutor {
             pstmt.setObject(i + 1, params[i]);
         }
     }
+
+    public void executeQuery(String sql) throws SQLException {
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.execute();
+        }
+    }
 }
