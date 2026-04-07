@@ -57,4 +57,9 @@ public class QueryExecutor {
         query.bindParameters(pstmt);
         return pstmt.executeUpdate();
     }
+
+    public void executeQuery(String query) throws SQLException {
+        PreparedStatement pstmt = connection.prepareStatement(query);
+        pstmt.executeQuery();
+    }
 }
