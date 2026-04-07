@@ -30,8 +30,6 @@ public class QueryExecutor {
         return mapper.mapToList(resultSet, resultClass);
     }
 
-    ;
-
     /**
      * Named Parameter 쿼리 실행
      */
@@ -64,7 +62,8 @@ public class QueryExecutor {
         return pstm.executeUpdate();
     }
 
-    public void executeQuery(String s) {
-
+    public void executeQuery(String query) throws SQLException {
+        PreparedStatement pstm = connection.prepareStatement(query);
+        pstm.execute();
     }
 }
