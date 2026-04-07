@@ -1,6 +1,5 @@
 # jpa-entity-manager
 
-Connection 생명주기 = 트랜잭션 생명주기 = EntityManager 생명주기
-Connection을 소유한 곳에서만 close
-하위 컴포넌트는 참조만 (소유 X)
-생성자로 의존성 전달 (Dependency Injection)
+같은 ID 조회 시 같은 인스턴스 반환 (Identity 보장)
+1주차 SelectQueryBuilder 재사용
+역할과 책임을 충분히 생각해 보기
