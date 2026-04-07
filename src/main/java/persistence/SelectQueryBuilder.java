@@ -5,7 +5,6 @@ import java.util.stream.Collectors;
 
 public class SelectQueryBuilder {
 
-    private final StringBuilder query = new StringBuilder("SELECT ");
     private String select = null;
     private String from = null;
     private String orderBy = null;
@@ -73,6 +72,8 @@ public class SelectQueryBuilder {
      * @return 생성된 SQL
      */
     public String build() {
+        StringBuilder query = new StringBuilder("SELECT ");
+
         if (from == null) {
             throw new IllegalStateException("FROM 절이 지정되지 않았습니다.");
         }

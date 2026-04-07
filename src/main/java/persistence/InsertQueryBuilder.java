@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 
 public class InsertQueryBuilder {
 
-    private final StringBuilder query = new StringBuilder("INSERT INTO ");
     private String into = null;
     private Map<String, String> valueMap = new LinkedHashMap<>();
 
@@ -41,6 +40,8 @@ public class InsertQueryBuilder {
      * SQL 생성
      */
     public String build() {
+        StringBuilder query = new StringBuilder("INSERT INTO ");
+
         if (!isValidQuery(valueMap)) {
             throw new IllegalArgumentException("최소 1개 이상의 컬럼-값 쌍을 가져야 함");
         }
