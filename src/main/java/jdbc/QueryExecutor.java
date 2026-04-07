@@ -49,15 +49,6 @@ public class QueryExecutor {
         }
     }
 
-    public void executeQuery(String sql) {
-        Preconditions.checkArgument(StringUtils.isNotBlank(sql), "sql 은 필수 입니다.");
-        try (final Statement statement = connection.createStatement()) {
-            statement.executeQuery(sql);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     /**
      * INSERT/UPDATE/DELETE 실행
      */
