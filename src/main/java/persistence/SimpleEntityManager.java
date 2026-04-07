@@ -9,10 +9,12 @@ import java.util.List;
 public class SimpleEntityManager {
     private final Connection connection;
     private final QueryExecutor executor;
+    private PersistenceContext persistenceContext;
 
     public SimpleEntityManager(Connection connection) {
         this.connection = connection;
         executor = new QueryExecutor(connection);
+        persistenceContext = new PersistenceContext();
     }
 
     public Connection getConnection() {
@@ -24,14 +26,19 @@ public class SimpleEntityManager {
     }
 
     public PersistenceContext getPersistenceContext() {
-        return new PersistenceContext();
+        return persistenceContext;
     }
 
     public Transaction getTransaction() {
         return new Transaction(connection);
     }
 
-    public <T, ID> T find(Class<T> entityClass, ID id) throws Exception {
+    public <T> T find(Class<T> entityClass, Object key) throws Exception {
+        T cached = persistenceContext.get(entityClass, key);
+        if (cached != null) {
+            return cached;
+        }
+
         String table = getTable(entityClass);
         String idField = getId(entityClass);
 
@@ -42,7 +49,7 @@ public class SimpleEntityManager {
                 .build();
 
 
-        List<T> result = executor.query(sql, entityClass, id);
+        List<T> result = executor.query(sql, entityClass, key);
         if (result == null || result.isEmpty()) {
             return null;
         }
@@ -51,7 +58,9 @@ public class SimpleEntityManager {
             throw new IllegalStateException("동일한 ID를 가진 엔티티가 여러 개 존재합니다.");
         }
 
-        return (T) result.get(0);
+        T entity = result.get(0);
+        persistenceContext.save(entityClass, key, entity);
+        return entity;
     }
 
     private <T> String getId(Class<T> entityClass) {
