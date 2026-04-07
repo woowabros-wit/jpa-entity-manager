@@ -39,15 +39,9 @@ public class SimpleEntityManager {
             return cached;
         }
 
-        String table = getTable(entityClass);
-        String idField = getId(entityClass);
 
-        String sql = new SelectQueryBuilder()
-                .select()
-                .from(table)
-                .where(String.format("%s = ?", idField))
-                .build();
-
+        String sql = new QueryExtractor()
+                .getSelectQuery(entityClass, key);
 
         List<T> result = executor.query(sql, entityClass, key);
         if (result == null || result.isEmpty()) {
@@ -61,26 +55,5 @@ public class SimpleEntityManager {
         T entity = result.get(0);
         persistenceContext.save(entityClass, key, entity);
         return entity;
-    }
-
-    private <T> String getId(Class<T> entityClass) {
-        Field[] fields = entityClass.getDeclaredFields();
-
-        for (Field field : fields) {
-            if (field.isAnnotationPresent(Id.class)) {
-                return field.getName();
-            }
-        }
-
-        throw new IllegalArgumentException("ID 필드가 존재하지 않습니다.");
-    }
-
-    private <T> String getTable(Class<T> entityClass) {
-        Table table = entityClass.getAnnotation(Table.class);
-        if (table != null) {
-            return table.name();
-        }
-
-        return entityClass.getSimpleName().toLowerCase() + "s";
     }
 }
