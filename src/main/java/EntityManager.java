@@ -1,12 +1,13 @@
 import jakarta.persistence.EntityTransaction;
+import persistence.PersistenceContext;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
-class EntityManager {
+public class EntityManager {
 
     private final Connection conn;
-    private final Object persistenceContext = new Object();
+    private final PersistenceContext persistenceContext = new PersistenceContext();
     private final EntityTransaction transaction;
 
     public EntityManager(Connection conn) {
@@ -18,7 +19,7 @@ class EntityManager {
         conn.close();
     }
 
-    public Object getPersistenceContext() {
+    public PersistenceContext getPersistenceContext() {
         return persistenceContext;
     }
 
