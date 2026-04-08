@@ -2,7 +2,6 @@ package persistence;
 
 public class DeleteQueryBuilder {
 
-    private final StringBuilder query = new StringBuilder("DELETE ");
     private String from = null;
     private String where = null;
 
@@ -28,6 +27,8 @@ public class DeleteQueryBuilder {
      * SQL 생성
      */
     public String build() {
+        StringBuilder query = new StringBuilder("DELETE ");
+
         if (!isValidQuery(where)) {
             throw new IllegalStateException();
         }

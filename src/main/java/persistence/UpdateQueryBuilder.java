@@ -6,7 +6,6 @@ import java.util.stream.Collectors;
 
 public class UpdateQueryBuilder {
 
-    private final StringBuilder query = new StringBuilder("UPDATE ");
     private String table = null;
     private Map<String, String> valueMap = new LinkedHashMap<>();
     private String where = null;
@@ -42,6 +41,8 @@ public class UpdateQueryBuilder {
      * SQL 생성
      */
     public String build() {
+        StringBuilder query = new StringBuilder("UPDATE ");
+
         if (!isValidQuery(where)) {
             throw new IllegalStateException("WHERE 조건이 필수입니다.");
         }

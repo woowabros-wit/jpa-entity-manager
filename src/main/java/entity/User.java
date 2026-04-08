@@ -1,7 +1,10 @@
-package persistence;
+package entity;
+
+import persistence.Id;
 
 // Entity 클래스
 public class User {
+    @Id
     private Long id;
     private String name;
     private Integer age;

@@ -1,40 +1,54 @@
 package persistence;
 
-import database.DatabaseServer;
-import database.H2;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import entity.User;
+import org.junit.jupiter.api.*;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class NamedParameterQueryTest {
 
-
     private static Connection conn;
 
     @BeforeAll
     static void beforeAll() throws SQLException {
-        final DatabaseServer server = new H2();
-        server.start();
-        conn = server.getConnection();
+        conn = DriverManager.getConnection(
+                "jdbc:h2:mem:simpleEntityManagerTest;DB_CLOSE_DELAY=-1", "sa", ""
+        );
 
-        // create user table
-        conn.createStatement().execute("CREATE TABLE users (" +
-                "id INT PRIMARY KEY AUTO_INCREMENT," +
-                "name VARCHAR(255) NOT NULL," +
-                "age INT NOT NULL," +
-                "email VARCHAR(255) NOT NULL," +
-                "height INT NOT NULL" +
-                ")");
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(
+                    "CREATE TABLE users (" +
+                            "id INT PRIMARY KEY AUTO_INCREMENT," +
+                            "name VARCHAR(255) NOT NULL," +
+                            "age INT NOT NULL," +
+                            "email VARCHAR(255) NOT NULL," +
+                            "height INT NOT NULL" +
+                            ")"
+            );
+        }
+    }
 
-        insert("INSERT INTO users (name, age, email, height) VALUES ('zkdlu', 30, 'zkdlu@woowahan.com', 200)");
+
+    @AfterAll
+    static void teardownDatabase() throws SQLException {
+        if (conn != null) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("DROP TABLE users");
+            }
+
+            conn.close();
+        }
+    }
+
+    @BeforeEach
+    void insertTestData() throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("DELETE FROM users");
+            stmt.execute("INSERT INTO users (id, name, age, email, height) VALUES (1, 'zkdlu', 30, 'zkdlu@woowahan.com', 200)");
+        }
     }
 
     @DisplayName("Named Parameter 쿼리 변환 테스트")
