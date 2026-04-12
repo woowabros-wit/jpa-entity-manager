@@ -1,9 +1,13 @@
 package builder;
 
+import builder.where.ComparisonCondition;
+import builder.where.WhereClause;
+
 public class SelectQueryBuilder implements Query {
 
     private String[] columns;
     private String table;
+    private WhereClause whereClause;
     private String orderColumn;
     private Direction orderDirection;
     private Integer limit;
@@ -15,6 +19,12 @@ public class SelectQueryBuilder implements Query {
 
     public SelectQueryBuilder from(String table) {
         this.table = table;
+        return this;
+    }
+
+    public SelectQueryBuilder where(ComparisonCondition condition) {
+        whereClause = WhereClause.empty();
+        whereClause.where(condition);
         return this;
     }
 
@@ -40,6 +50,7 @@ public class SelectQueryBuilder implements Query {
 
         return "SELECT " + generateColumnsString()
             + " FROM " + table
+            + generateWhereClause()
             + generateOrderByString()
             + generateLimitString();
     }
@@ -48,6 +59,13 @@ public class SelectQueryBuilder implements Query {
         if (table == null || table.isBlank()) {
             throw new IllegalStateException("table은 null 혹은 공백일 수 없습니다.");
         }
+    }
+
+    private String generateWhereClause() {
+        if (whereClause == null) {
+            return "";
+        }
+        return " " + whereClause.toSql();
     }
 
     private String generateColumnsString() {

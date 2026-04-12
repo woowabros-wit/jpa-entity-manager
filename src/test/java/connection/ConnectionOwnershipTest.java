@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import builder.SelectQueryBuilder;
-import database.EntityManager;
+import entitymanager.EntityManager;
 import entity.User;
 import executor.QueryExecutor;
 import java.sql.Connection;
