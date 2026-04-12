@@ -1,16 +1,17 @@
 package persistence;
 
+@Table(name = "users")
 public class User {
+    @Id
     private Long id;
+    @Column(name = "name")
     private String name;
+    @Column(name = "age")
     private Integer age;
+    @Column(name = "email")
     private String email;
-
-    // 기본 생성자 필수!
     public User() {
     }
-
-    // Getters/Setters...
 
     public Long getId() {
         return id;
