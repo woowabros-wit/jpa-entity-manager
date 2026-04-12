@@ -20,6 +20,16 @@ public class Transaction {
 
     public void commit() {
         try {
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void rollback() {
+        try {
+            connection.rollback();
             connection.setAutoCommit(true);
         } catch (Exception e) {
             e.printStackTrace();

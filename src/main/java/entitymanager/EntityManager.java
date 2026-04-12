@@ -1,15 +1,21 @@
 package entitymanager;
 
 
+import static entitymanager.EntityUtils.extractIdFieldName;
+import static entitymanager.EntityUtils.extractIdFieldValue;
+import static entitymanager.EntityUtils.extractTableName;
+
 import builder.Query;
 import builder.SelectQueryBuilder;
 import builder.where.ComparisonCondition;
 import builder.where.ComparisonOperator;
 import executor.QueryExecutor;
+import java.lang.reflect.Field;
 import java.sql.Connection;
-import java.util.Arrays;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
+import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 
 public class EntityManager {
@@ -18,12 +24,16 @@ public class EntityManager {
     private Transaction transaction;
     private PersistenceContext persistenceContext;
     private QueryExecutor queryExecutor;
+    private QueryGeneratorForEntity queryGenerator;
+    private IdentityAllocator identityAllocator;
 
     public EntityManager(Connection connection) {
         this.connection = connection;
         this.transaction = new Transaction(connection);
         this.persistenceContext = new PersistenceContext();
         this.queryExecutor = new QueryExecutor(connection);
+        this.queryGenerator = new QueryGeneratorForEntity();
+        this.identityAllocator = new IdentityAllocator(queryExecutor, persistenceContext);
     }
 
     public void close() {
@@ -53,15 +63,15 @@ public class EntityManager {
         }
 
         T result = findById(clazz, id);
-        persistenceContext.save(clazz, result);
+        persistenceContext.save(clazz, EntityForPersistence.updateOf(result));
         return result;
     }
 
     @Nullable
     private <T> T findById(Class<T> clazz, long id) {
         Query sql = new SelectQueryBuilder()
-            .from(clazz.getAnnotation(Table.class).name())
-            .where(new ComparisonCondition(getIdFieldName(clazz), ComparisonOperator.EQ, String.valueOf(id)));
+            .from(extractTableName(clazz))
+            .where(new ComparisonCondition(extractIdFieldName(clazz), ComparisonOperator.EQ, String.valueOf(id)));
 
         try {
             List<T> queryResult = queryExecutor.query(sql, clazz);
@@ -74,12 +84,54 @@ public class EntityManager {
         return null;
     }
 
-    @NotNull
-    private static <T> String getIdFieldName(Class<T> clazz) {
-        return Arrays.stream(clazz.getDeclaredFields())
-            .filter(field -> field.isAnnotationPresent(Id.class))
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("id 필드를 찾을 수 없습니다."))
-            .getName();
+    // TODO persist할때마다 id 조회 중이라 개선 필요
+    public <T> void persist(T entity) {
+        try {
+            String tableName = extractTableName(entity.getClass());
+            String idFieldName = extractIdFieldName(entity.getClass());
+            Field idField = entity.getClass().getDeclaredField(idFieldName);
+
+            idField.setAccessible(true);
+            try {
+                if (idField.get(entity) == null) {
+                    long id = identityAllocator.allocateNextId(entity.getClass(), tableName, idFieldName);
+                    idField.set(entity, id);
+                    persistenceContext.save(entity.getClass(), EntityForPersistence.createOf(entity));
+                } else {
+                    persistenceContext.save(entity.getClass(), EntityForPersistence.updateOf(entity));
+                }
+            } finally {
+                idField.setAccessible(false);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("엔티티 영속화에 실패했습니다.", e);
+        }
+    }
+
+    public <T> void remove(T entity) {
+        var persistedEntity = persistenceContext.find(entity.getClass(), extractIdFieldValue(entity));
+        if (persistedEntity == null) {
+            persistedEntity = findById(entity.getClass(), extractIdFieldValue(entity));
+        }
+        persistenceContext.save(entity.getClass(), EntityForPersistence.deleteOf(persistedEntity));
+    }
+
+    public void flush() {
+        List<Query> queries = new ArrayList<>();
+        for (Map<Long, EntityForPersistence> entitiesById : persistenceContext.getAllEntities().values()) {
+            for (EntityForPersistence entity : entitiesById.values()) {
+                Query query = switch (entity.getStatus()) {
+                    case CREATED -> queryGenerator.insert(entity.getEntity());
+                    case UPDATED -> queryGenerator.update(entity.getEntity());
+                    case DELETED -> queryGenerator.delete(entity.getEntity());
+                };
+                queries.add(query);
+            }
+        }
+        try {
+            queryExecutor.execute(queries);
+        } catch (SQLException e) {
+            throw new IllegalStateException("flush에 실패했습니다.", e);
+        }
     }
 }

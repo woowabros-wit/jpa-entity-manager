@@ -25,6 +25,14 @@ public class UpdateQueryBuilder implements Query {
         return this;
     }
 
+    public UpdateQueryBuilder set(Map<String, String> columnValues) {
+        if (this.columnValues == null) {
+            this.columnValues = new LinkedHashMap<>();
+        }
+        this.columnValues.putAll(columnValues);
+        return this;
+    }
+
     public UpdateQueryBuilder where(ComparisonCondition condition) {
         whereClause = WhereClause.empty();
         whereClause.where(condition);

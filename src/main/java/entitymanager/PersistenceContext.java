@@ -1,45 +1,48 @@
 package entitymanager;
 
-import java.util.Arrays;
+import static entitymanager.EntityUtils.extractIdFieldValue;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class PersistenceContext {
 
-    private Map<Class<?>, Map<Long, Object>> entities = new HashMap<>();
+    private Map<Class<?>, Map<Long, EntityForPersistence>> entities = new HashMap<>();
 
-    public <T> void save(Class<T> clazz, Object entity) {
+    public <T> void save(Class<T> clazz, EntityForPersistence entity) {
         if (entity == null) {
             return;
         }
 
-        Long id = findEntityId(clazz, entity);
-
-        Map<Long, Object> entitiesByClazz = entities.getOrDefault(clazz, new HashMap<>());
-        entitiesByClazz.put(id, entity);
+        Map<Long, EntityForPersistence> entitiesByClazz = entities.getOrDefault(clazz, new HashMap<>());
+        entitiesByClazz.put(extractIdFieldValue(entity.getEntity()), entity);
 
         entities.put(clazz, entitiesByClazz);
     }
 
-    private <T> Long findEntityId(Class<T> clazz, Object entity) {
-        String idFieldName = Arrays.stream(clazz.getDeclaredFields())
-            .filter(field -> field.isAnnotationPresent(Id.class))
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("id 필드를 찾을 수 없습니다."))
-            .getName();
-        try {
-            var field = clazz.getDeclaredField(idFieldName);
-            field.setAccessible(true);
-            Long id = (Long) field.get(entity);
-            field.setAccessible(false);
-            return id;
-        } catch (Exception e) {
-            throw new IllegalStateException("id 값 추출에 실패하였습니다.");
+    public <T> T find(Class<T> clazz, long id) {
+        EntityForPersistence result = entities.getOrDefault(clazz, Collections.emptyMap()).getOrDefault(id, null);
+        if (result == null || result.isDeleted()) {
+            return null;
         }
+        return (T) result.getEntity();
     }
 
-    public <T> T find(Class<T> clazz, long id) {
-        return (T) entities.getOrDefault(clazz, Collections.emptyMap()).getOrDefault(id, null);
+    public Map<Class<?>, Map<Long, EntityForPersistence>> getAllEntities() {
+        return entities;
+    }
+
+    public long maxAssignedId(Class<?> clazz) {
+        Map<Long, EntityForPersistence> map = entities.get(clazz);
+        if (map == null || map.isEmpty()) {
+            return 0L;
+        }
+        return map.keySet().stream()
+            .filter(Objects::nonNull)
+            .mapToLong(Long::longValue)
+            .max()
+            .orElse(0L);
     }
 }
