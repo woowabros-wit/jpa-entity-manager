@@ -5,6 +5,7 @@ import jakarta.persistence.Table;
 import persistence.query.InsertQueryBuilder;
 import persistence.query.ResultSetMapper;
 import persistence.query.SelectQueryBuilder;
+import persistence.query.UpdateQueryBuilder;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -14,6 +15,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class SimpleEntityManager {
     private final Connection connection;
@@ -61,6 +64,30 @@ public class SimpleEntityManager {
     }
 
     public void flush() throws Exception {
+        flushInserts();
+        flushDirtyChecking();
+    }
+
+    public EntityTransaction getTransaction() {
+        return transaction;
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public void close() {
+        try {
+            if (connection.isClosed()) {
+                return;
+            }
+            connection.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void flushInserts() throws Exception {
         List<Object> newEntities = persistenceContext.getNewEntities();
         if (newEntities.isEmpty()) {
             return;
@@ -89,22 +116,72 @@ public class SimpleEntityManager {
         persistenceContext.clearNewEntities();
     }
 
-    public EntityTransaction getTransaction() {
-        return transaction;
-    }
+    private void flushDirtyChecking() throws Exception {
+        Map<Class<?>, Map<Object, Object>> managedEntities = persistenceContext.getManagedEntities();
 
-    public Connection getConnection() {
-        return connection;
-    }
+        for (Map.Entry<Class<?>, Map<Object, Object>> classEntry : managedEntities.entrySet()) {
+            Class<?> entityClass = classEntry.getKey();
 
-    public void close() {
-        try {
-            if (connection.isClosed()) {
-                return;
+            for (Map.Entry<Object, Object> entityEntry : classEntry.getValue().entrySet()) {
+                Object id = entityEntry.getKey();
+                Object entity = entityEntry.getValue();
+
+                Map<String, Object> snapshot = persistenceContext.getSnapshot(entityClass, id);
+                if (snapshot == null) {
+                    continue;
+                }
+
+                List<String> dirtyFields = findDirtyFields(entity, entityClass, snapshot);
+                if (!dirtyFields.isEmpty()) {
+                    executeUpdate(entity, entityClass, id, dirtyFields);
+                }
             }
-            connection.close();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        }
+    }
+
+    private List<String> findDirtyFields(Object entity, Class<?> entityClass, Map<String, Object> snapshot) throws IllegalAccessException {
+        List<String> dirtyFields = new ArrayList<>();
+
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Id.class)) {
+                continue;
+            }
+            field.setAccessible(true);
+            Object currentValue = field.get(entity);
+            Object snapshotValue = snapshot.get(field.getName());
+
+            if (!Objects.equals(currentValue, snapshotValue)) {
+                dirtyFields.add(field.getName());
+            }
+        }
+
+        return dirtyFields;
+    }
+
+    private void executeUpdate(Object entity, Class<?> entityClass, Object id, List<String> dirtyFields) throws Exception {
+        String tableName = resolveTableName(entityClass);
+        String idColumnName = resolveIdColumnName(entityClass);
+
+        UpdateQueryBuilder builder = new UpdateQueryBuilder()
+                .table(tableName)
+                .where(idColumnName + " = ?");
+
+        List<Object> params = new ArrayList<>();
+        for (String fieldName : dirtyFields) {
+            Field field = entityClass.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            builder.set(fieldName, "?");
+            params.add(field.get(entity));
+        }
+        params.add(id);
+
+        String sql = builder.build();
+
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            for (int i = 0; i < params.size(); i++) {
+                pstmt.setObject(i + 1, params.get(i));
+            }
+            pstmt.executeUpdate();
         }
     }
 
