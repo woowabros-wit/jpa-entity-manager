@@ -15,6 +15,10 @@ public class QueryExecutor {
         this.mapper = new ResultSetMapper();
     }
 
+    public ResultSet executeQuery(String sql) throws SQLException {
+        PreparedStatement pstmt = connection.prepareStatement(sql);
+        return pstmt.executeQuery();
+    }
 
     public <T> List<T> query(String sql, Class<T> resultClass, Object... params) throws Exception {
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
