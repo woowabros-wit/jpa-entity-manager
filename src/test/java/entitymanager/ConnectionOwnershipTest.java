@@ -1,6 +1,7 @@
 package entitymanager;
 
 import org.junit.jupiter.api.Test;
+import persistence.query.QueryExecutor;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
