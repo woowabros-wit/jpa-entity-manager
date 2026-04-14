@@ -25,7 +25,7 @@ class ConnectionOwnershipTest {
         assertNotNull(em.getConnection());
         assertFalse(em.getConnection().isClosed());
 
-        // When: EntityManager 종료
+        // When: persistence.EntityManager 종료
         em.close();
 
         // Then: Connection도 같이 닫힘

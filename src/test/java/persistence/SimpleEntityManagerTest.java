@@ -1,9 +1,10 @@
-import persistence.fixture.User;
+package persistence;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import persistence.SimpleEntityManager;
+import persistence.fixture.User;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -25,7 +26,7 @@ class SimpleEntityManagerTest {
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(
                     "CREATE TABLE users (" +
-                            "  id BIGINT PRIMARY KEY," +
+                            "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
                             "  name VARCHAR(100)," +
                             "  age INT" +
                             ")"
@@ -44,8 +45,9 @@ class SimpleEntityManagerTest {
     void insertTestData() throws SQLException {
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("DELETE FROM users");
-            stmt.execute("INSERT INTO users (id, name, age) VALUES (1, 'John', 30)");
-            stmt.execute("INSERT INTO users (id, name, age) VALUES (2, 'Alice', 25)");
+            stmt.execute("ALTER TABLE users ALTER COLUMN id RESTART WITH 1");
+            stmt.execute("INSERT INTO users (name, age) VALUES ('John', 30)");
+            stmt.execute("INSERT INTO users (name, age) VALUES ('Alice', 25)");
         }
     }
 
@@ -122,5 +124,82 @@ class SimpleEntityManagerTest {
         entityManager.close();
 
         assertTrue(conn.isClosed());
+    }
+
+    @Test
+    void persist는_즉시_실행되지_않는다() throws Exception {
+        // Given
+        SimpleEntityManager entityManager = new SimpleEntityManager(connection);
+        entityManager.getTransaction().begin();
+        User user = new User("John", 25);
+
+        // When
+        entityManager.persist(user);
+
+        // Then
+        // 이 시점에는 DB에 없어야 함 (아직 flush 안됨)
+        assertNull(findInDatabase(3L));
+
+        entityManager.getTransaction().rollback();
+    }
+
+    @Test
+    void flush_시점에_INSERT가_실행된다() throws Exception {
+        // Given
+        SimpleEntityManager entityManager = new SimpleEntityManager(connection);
+        entityManager.getTransaction().begin();
+        User user = new User("NewUser", 25);
+        entityManager.persist(user);
+
+        // When
+        entityManager.flush();
+
+        // Then
+        // flush() 후에는 DB에 있어야 함
+        assertNotNull(findInDatabase(3L));
+
+        entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void 여러_persist를_모아서_실행한다() throws Exception {
+        // Given
+        SimpleEntityManager entityManager = new SimpleEntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        // When
+        for (int i = 0; i < 100; i++) {
+            entityManager.persist(new User("User" + i, 20 + i));
+        }
+        entityManager.flush();  // 한 번에 실행!
+
+        // Then
+        assertEquals(102, countUsers());  // 기존 2개 + 새로 추가한 100개
+
+        entityManager.getTransaction().commit();
+    }
+
+    private User findInDatabase(Long id) throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             var rs = stmt.executeQuery("SELECT * FROM users WHERE id = " + id)) {
+            if (rs.next()) {
+                User user = new User();
+                user.setId(rs.getLong("id"));
+                user.setName(rs.getString("name"));
+                user.setAge(rs.getInt("age"));
+                return user;
+            }
+            return null;
+        }
+    }
+
+    private int countUsers() throws SQLException {
+        try (Statement stmt = connection.createStatement();
+             var rs = stmt.executeQuery("SELECT COUNT(*) FROM users")) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+            return 0;
+        }
     }
 }

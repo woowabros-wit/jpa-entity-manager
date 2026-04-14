@@ -4,13 +4,17 @@ import persistence.annotation.Id;
 import persistence.annotation.Table;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 public class EntityMetaQuery {
 
+    private final Class<?> entityClass;
     private final String tableName;
     private final String idColumn;
 
     public EntityMetaQuery(Class<?> entityClass) {
+        this.entityClass = entityClass;
         this.tableName = resolveTableName(entityClass);
         this.idColumn = resolveIdColumn(entityClass);
     }
@@ -20,6 +24,31 @@ public class EntityMetaQuery {
                 .select("*")
                 .from(tableName)
                 .build() + " WHERE " + idColumn + " = ?";
+    }
+
+    public String buildInsert() {
+        InsertQueryBuilder builder = new InsertQueryBuilder().into(tableName);
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (!field.isAnnotationPresent(Id.class)) {
+                builder.value(field.getName(), "?");
+            }
+        }
+        return builder.build();
+    }
+
+    public Object[] extractInsertParams(Object entity) {
+        List<Object> params = new ArrayList<>();
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (!field.isAnnotationPresent(Id.class)) {
+                field.setAccessible(true);
+                try {
+                    params.add(field.get(entity));
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return params.toArray();
     }
 
     private String resolveTableName(Class<?> entityClass) {
