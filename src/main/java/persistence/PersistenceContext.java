@@ -5,18 +5,18 @@ import java.util.Map;
 
 public class PersistenceContext {
 
-    private final Map<Class<?>, Map<Object, Object>> cache = new HashMap<>();
+    private final Map<Class<?>, EntityStore> cache = new HashMap<>();
 
     public <T> T get(Class<T> entityClass, Object id) {
-        Map<Object, Object> entityMap = cache.get(entityClass);
-        if (entityMap == null) {
+        EntityStore store = cache.get(entityClass);
+        if (store == null) {
             return null;
         }
-        return entityClass.cast(entityMap.get(id));
+        return entityClass.cast(store.get(id));
     }
 
     public void put(Class<?> entityClass, Object id, Object entity) {
-        cache.computeIfAbsent(entityClass, k -> new HashMap<>())
+        cache.computeIfAbsent(entityClass, k -> new EntityStore())
              .put(id, entity);
     }
 }

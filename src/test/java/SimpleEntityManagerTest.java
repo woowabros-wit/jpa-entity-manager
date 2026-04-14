@@ -103,4 +103,24 @@ class SimpleEntityManagerTest {
         assertNotSame(user1, user2);
     }
 
+    @Test
+    void 존재하지_않는_ID는_null을_반환한다() throws Exception {
+        SimpleEntityManager entityManager = new SimpleEntityManager(connection);
+
+        User user = entityManager.find(User.class, 999L);
+
+        assertNull(user);
+    }
+
+    @Test
+    void close하면_Connection이_닫힌다() throws SQLException {
+        Connection conn = DriverManager.getConnection(
+                "jdbc:h2:mem:simpleEntityManagerTest;DB_CLOSE_DELAY=-1", "sa", ""
+        );
+        SimpleEntityManager entityManager = new SimpleEntityManager(conn);
+
+        entityManager.close();
+
+        assertTrue(conn.isClosed());
+    }
 }

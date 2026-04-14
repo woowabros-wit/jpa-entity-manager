@@ -1,7 +1,7 @@
 package persistence.fixture;
 
-import annotation.Id;
-import annotation.Table;
+import persistence.annotation.Id;
+import persistence.annotation.Table;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;

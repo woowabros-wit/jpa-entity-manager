@@ -1,8 +1,8 @@
 package persistence.fixture;
 
 
-import annotation.Id;
-import annotation.Table;
+import persistence.annotation.Id;
+import persistence.annotation.Table;
 
 @Table(name = "users")
 public class User {
