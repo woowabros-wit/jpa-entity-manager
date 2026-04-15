@@ -1,0 +1,26 @@
+package persistence.fixture;
+
+
+import persistence.annotation.Id;
+import persistence.annotation.Table;
+
+@Table(name = "users")
+public class User {
+
+    @Id
+    private Long id;
+    private String name;
+    private int age;
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+}
