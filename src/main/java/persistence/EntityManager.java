@@ -1,6 +1,7 @@
 package persistence;
 
 import jakarta.persistence.EntityTransaction;
+import persistence.PersistenceContext;
 
 import java.sql.Connection;
 import java.sql.SQLException;
