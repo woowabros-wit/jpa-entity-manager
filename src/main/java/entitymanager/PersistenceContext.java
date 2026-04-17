@@ -45,6 +45,10 @@ public class PersistenceContext {
         }
     }
 
+    public void clear() {
+        entities.clear();
+    }
+
     public long maxAssignedId(Class<?> clazz) {
         Map<Long, EntityForPersistence> map = entities.get(clazz);
         if (map == null || map.isEmpty()) {

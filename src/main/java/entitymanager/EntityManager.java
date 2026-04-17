@@ -38,6 +38,7 @@ public class EntityManager {
     }
 
     public void close() {
+        persistenceContext.clear();
         try {
             connection.close();
         } catch (Exception e) {
