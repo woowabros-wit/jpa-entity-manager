@@ -37,6 +37,11 @@ class EntityForPersistence {
         return !current.equals(snapshot);
     }
 
+    public void markFlushed() {
+        this.status = Status.UPDATED;
+        this.snapshot = takeSnapshot(entity);
+    }
+
     public Status getStatus() {
         return status;
     }

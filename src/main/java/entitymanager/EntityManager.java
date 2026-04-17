@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 public class EntityManager {
@@ -118,22 +119,41 @@ public class EntityManager {
 
     public void flush() {
         List<Query> queries = new ArrayList<>();
-        for (Map<Long, EntityForPersistence> entitiesById : persistenceContext.getAllEntities().values()) {
-            for (EntityForPersistence entity : entitiesById.values()) {
-                Query query = switch (entity.getStatus()) {
-                    case CREATED -> queryGenerator.insert(entity.getEntity());
-                    case UPDATED -> entity.isDirty() ? queryGenerator.update(entity.getEntity()) : null;
-                    case DELETED -> queryGenerator.delete(entity.getEntity());
-                };
-                if (query != null) {
-                    queries.add(query);
+        List<Runnable> postFlushActions = new ArrayList<>();
+
+        for (Map.Entry<Class<?>, Map<Long, EntityForPersistence>> entitiesWithClazz : persistenceContext.getAllEntities().entrySet()) {
+            Class<?> clazz = entitiesWithClazz.getKey();
+            Set<Map.Entry<Long, EntityForPersistence>> entitiesWithIds = entitiesWithClazz.getValue().entrySet();
+
+            for (Map.Entry<Long, EntityForPersistence> entityWithId : entitiesWithIds) {
+                Long id = entityWithId.getKey();
+                EntityForPersistence entity = entityWithId.getValue();
+
+                switch (entity.getStatus()) {
+                    case CREATED -> {
+                        queries.add(queryGenerator.insert(entity.getEntity()));
+                        postFlushActions.add(entity::markFlushed);
+                    }
+                    case UPDATED -> {
+                        if (entity.isDirty()) {
+                            queries.add(queryGenerator.update(entity.getEntity()));
+                        }
+                        postFlushActions.add(entity::markFlushed);
+                    }
+                    case DELETED -> {
+                        queries.add(queryGenerator.delete(entity.getEntity()));
+                        postFlushActions.add(() -> persistenceContext.remove(clazz, id));
+                    }
                 }
             }
         }
+
         try {
             queryExecutor.execute(queries);
         } catch (SQLException e) {
             throw new IllegalStateException("flush에 실패했습니다.", e);
         }
+
+        postFlushActions.forEach(Runnable::run);
     }
 }
