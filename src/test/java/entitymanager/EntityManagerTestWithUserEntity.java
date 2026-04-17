@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import entity.User;
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -163,6 +165,127 @@ class EntityManagerTestWithUserEntity {
         assertEquals(count + 2, countUsers());  // 기존 2개 + 새로 추가한 {count}개
 
         entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void 조회한_엔티티는_DB가_변경되어도_1차_캐시에서_반환된다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+
+        User user = entityManager.find(User.class, 1L);
+        assertEquals("John", user.getName());
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("UPDATE users SET name = 'DirectUpdate' WHERE id = 1");
+        }
+
+        User cachedUser = entityManager.find(User.class, 1L);
+        assertEquals("John", cachedUser.getName());
+        assertTrue(user == cachedUser);
+    }
+
+    @Test
+    void 엔티티_필드를_변경하면_flush_시_UPDATE가_실행된다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        User user = entityManager.find(User.class, 1L);
+        Field nameField = User.class.getDeclaredField("name");
+        nameField.setAccessible(true);
+        nameField.set(user, "UpdatedJohn");
+        nameField.setAccessible(false);
+
+        entityManager.flush();
+
+        User dbUser = findInDatabase(1L);
+        assertEquals("UpdatedJohn", dbUser.getName());
+
+        entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void flush를_두_번_호출해도_INSERT가_중복_실행되지_않는다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        entityManager.persist(User.of("NewUser", 25));
+        entityManager.flush();
+        entityManager.flush();
+
+        assertEquals(3, countUsers());
+
+        entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void commit_시_자동으로_flush가_실행된다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        entityManager.persist(User.of("CommitUser", 40));
+
+        entityManager.getTransaction().commit();
+
+        assertNotNull(findInDatabase(3L));
+    }
+
+    @Test
+    void rollback_시_PersistenceContext가_초기화된다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        entityManager.persist(User.of("RollbackUser", 30));
+        entityManager.getTransaction().rollback();
+
+        assertNull(entityManager.getPersistenceContext().find(User.class, 3L));
+        assertNull(findInDatabase(3L));
+    }
+
+    @Test
+    void remove_후_flush하면_DB에서_삭제된다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        User user = entityManager.find(User.class, 1L);
+        entityManager.remove(user);
+        entityManager.flush();
+
+        assertNull(findInDatabase(1L));
+        assertEquals(1, countUsers());
+
+        entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void persist_후_flush_전에_remove하면_INSERT가_실행되지_않는다() throws Exception {
+        EntityManager entityManager = new EntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        User user = User.of("TempUser", 20);
+        entityManager.persist(user);
+        entityManager.remove(user);
+        entityManager.flush();
+
+        assertEquals(2, countUsers());
+
+        entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void 존재하지_않는_엔티티를_remove하면_예외가_발생한다() {
+        EntityManager entityManager = new EntityManager(connection);
+
+        User ghost = new User(999L, "Ghost", 0, null);
+
+        assertThrows(IllegalArgumentException.class, () -> entityManager.remove(ghost));
+    }
+
+    @Test
+    void 존재하지_않는_ID를_조회하면_null을_반환한다() {
+        EntityManager entityManager = new EntityManager(connection);
+
+        User user = entityManager.find(User.class, 999L);
+
+        assertNull(user);
     }
 
     private User findInDatabase(Long id) throws SQLException {
