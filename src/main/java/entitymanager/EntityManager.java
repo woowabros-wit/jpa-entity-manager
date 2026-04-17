@@ -35,6 +35,9 @@ public class EntityManager {
         this.queryExecutor = new QueryExecutor(connection);
         this.queryGenerator = new QueryGeneratorForEntity();
         this.identityAllocator = new IdentityAllocator(queryExecutor, persistenceContext);
+
+        this.transaction.onBeforeCommit(this::flush);
+        this.transaction.onAfterRollback(persistenceContext::clear);
     }
 
     public void close() {
