@@ -64,7 +64,6 @@ public class EntityManager {
         }
 
         T result = findById(clazz, id);
-        persistenceContext.save(clazz, EntityForPersistence.updateOf(result));
         return result;
     }
 
@@ -74,15 +73,20 @@ public class EntityManager {
             .from(extractTableName(clazz))
             .where(new ComparisonCondition(extractIdFieldName(clazz), ComparisonOperator.EQ, String.valueOf(id)));
 
+        T result = null;
+
         try {
             List<T> queryResult = queryExecutor.query(sql, clazz);
-            return queryResult.isEmpty() ? null : queryResult.getFirst();
-
+            result = queryResult.isEmpty() ? null : queryResult.getFirst();
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return null;
+        if (result != null) {
+            persistenceContext.save(clazz, EntityForPersistence.updateOf(result));
+        }
+
+        return result;
     }
 
     // TODO persist할때마다 id 조회 중이라 개선 필요
@@ -110,11 +114,23 @@ public class EntityManager {
     }
 
     public <T> void remove(T entity) {
-        var persistedEntity = persistenceContext.find(entity.getClass(), extractIdFieldValue(entity));
-        if (persistedEntity == null) {
-            persistedEntity = findById(entity.getClass(), extractIdFieldValue(entity));
+        Long id = extractIdFieldValue(entity);
+        EntityForPersistence persisted = persistenceContext.findEntityForPersistence(entity.getClass(), id);
+
+        if (persisted != null && persisted.getStatus() == EntityForPersistence.Status.CREATED) {
+            persistenceContext.remove(entity.getClass(), id);
+            return;
         }
-        persistenceContext.save(entity.getClass(), EntityForPersistence.deleteOf(persistedEntity));
+
+        if (persisted == null) {
+            Object found = findById(entity.getClass(), id);
+            if (found == null) {
+                throw new IllegalArgumentException("삭제할 엔티티가 존재하지 않습니다. id=" + id);
+            }
+            entity = (T) found;
+        }
+
+        persistenceContext.save(entity.getClass(), EntityForPersistence.deleteOf(entity));
     }
 
     public void flush() {

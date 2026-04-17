@@ -30,6 +30,10 @@ public class PersistenceContext {
         return (T) result.getEntity();
     }
 
+    public EntityForPersistence findEntityForPersistence(Class<?> clazz, long id) {
+        return entities.getOrDefault(clazz, Collections.emptyMap()).getOrDefault(id, null);
+    }
+
     public Map<Class<?>, Map<Long, EntityForPersistence>> getAllEntities() {
         return entities;
     }
