@@ -122,10 +122,12 @@ public class EntityManager {
             for (EntityForPersistence entity : entitiesById.values()) {
                 Query query = switch (entity.getStatus()) {
                     case CREATED -> queryGenerator.insert(entity.getEntity());
-                    case UPDATED -> queryGenerator.update(entity.getEntity());
+                    case UPDATED -> entity.isDirty() ? queryGenerator.update(entity.getEntity()) : null;
                     case DELETED -> queryGenerator.delete(entity.getEntity());
                 };
-                queries.add(query);
+                if (query != null) {
+                    queries.add(query);
+                }
             }
         }
         try {
