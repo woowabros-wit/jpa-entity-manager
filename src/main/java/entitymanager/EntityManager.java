@@ -41,8 +41,8 @@ public class EntityManager {
         persistenceContext.clear();
         try {
             connection.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            throw new IllegalStateException("EntityManager 종료에 실패했습니다.", e);
         }
     }
 
@@ -74,20 +74,16 @@ public class EntityManager {
             .from(extractTableName(clazz))
             .where(new ComparisonCondition(extractIdFieldName(clazz), ComparisonOperator.EQ, String.valueOf(id)));
 
-        T result = null;
-
         try {
             List<T> queryResult = queryExecutor.query(sql, clazz);
-            result = queryResult.isEmpty() ? null : queryResult.getFirst();
-        } catch (Exception e) {
-            e.printStackTrace();
+            T result = queryResult.isEmpty() ? null : queryResult.getFirst();
+            if (result != null) {
+                persistenceContext.save(clazz, EntityForPersistence.updateOf(result));
+            }
+            return result;
+        } catch (SQLException e) {
+            throw new IllegalStateException("엔티티 조회에 실패했습니다. id=" + id, e);
         }
-
-        if (result != null) {
-            persistenceContext.save(clazz, EntityForPersistence.updateOf(result));
-        }
-
-        return result;
     }
 
     // TODO persist할때마다 id 조회 중이라 개선 필요

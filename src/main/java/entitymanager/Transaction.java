@@ -1,6 +1,7 @@
 package entitymanager;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 
 public class Transaction {
 
@@ -13,8 +14,8 @@ public class Transaction {
     public void begin() {
         try {
             connection.setAutoCommit(false);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            throw new IllegalStateException("트랜잭션 시작에 실패했습니다.", e);
         }
     }
 
@@ -22,8 +23,8 @@ public class Transaction {
         try {
             connection.commit();
             connection.setAutoCommit(true);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            throw new IllegalStateException("트랜잭션 커밋에 실패했습니다.", e);
         }
     }
 
@@ -31,8 +32,8 @@ public class Transaction {
         try {
             connection.rollback();
             connection.setAutoCommit(true);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            throw new IllegalStateException("트랜잭션 롤백에 실패했습니다.", e);
         }
     }
 }
