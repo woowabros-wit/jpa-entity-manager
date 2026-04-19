@@ -26,6 +26,17 @@ public class PersistenceContext {
              .put(id, metadata.copyEntity(entity));
     }
 
+    public void remove(Class<?> entityClass, Object id) {
+        EntityStore store = cache.get(entityClass);
+        if (store != null) {
+            store.remove(id);
+        }
+        EntityStore snapshotStore = snapshots.get(entityClass);
+        if (snapshotStore != null) {
+            snapshotStore.remove(id);
+        }
+    }
+
     public List<DirtyEntity> getDirtyEntities() {
         List<DirtyEntity> dirtyEntities = new ArrayList<>();
         for (var entry : cache.entrySet()) {
@@ -40,6 +51,7 @@ public class PersistenceContext {
                 Object snapshot = snapshotStore.get(id);
                 if (snapshot != null && metadata.isDirty(current, snapshot)) {
                     dirtyEntities.add(new DirtyEntity(entityClass, current));
+                    snapshotStore.put(id, metadata.copyEntity(current));
                 }
             }
         }

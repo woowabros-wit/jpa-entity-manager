@@ -49,4 +49,15 @@ public class EntityMetaQuery {
     public Object extractIdValue(Object entity) {
         return metadata.getIdValue(entity);
     }
+
+    public String buildDelete() {
+        return new DeleteQueryBuilder()
+                .from(metadata.getTableName())
+                .where(metadata.getIdColumnName() + " = ?")
+                .build();
+    }
+
+    public Object[] extractDeleteParams(Object entity) {
+        return new Object[]{metadata.getIdValue(entity)};
+    }
 }

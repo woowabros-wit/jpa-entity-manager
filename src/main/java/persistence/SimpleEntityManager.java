@@ -4,20 +4,21 @@ import jakarta.persistence.EntityTransaction;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleEntityManager {
     private final Connection connection;
     private final PersistenceContext persistenceContext;
     private final QueryExecutor queryExecutor;
+    private final SimpleEntityPersister persister;
     private final EntityTransaction transaction;
-    private final List<Object> actionQueue = new ArrayList<>();
+    private final ActionQueue actionQueue = new ActionQueue();
 
     public SimpleEntityManager(Connection connection) {
         this.connection = connection;
         this.persistenceContext = new PersistenceContext();
         this.queryExecutor = new QueryExecutor(connection);
+        this.persister = new SimpleEntityPersister(queryExecutor);
         this.transaction = new EntityTransactionImpl(connection);
     }
 
@@ -39,23 +40,21 @@ public class SimpleEntityManager {
     }
 
     public void persist(Object entity) {
-        actionQueue.add(entity);
+        checkDirtyEntities();
+        actionQueue.addInsertAction(entity);
+    }
+
+    public void remove(Object entity) {
+        checkDirtyEntities();
+        EntityMetadata metadata = EntityMetadata.of(entity.getClass());
+        persistenceContext.remove(entity.getClass(), metadata.getIdValue(entity));
+        actionQueue.addDeleteAction(entity);
     }
 
     public void flush() {
+        checkDirtyEntities();
         try {
-            for (Object entity : actionQueue) {
-                EntityMetaQuery metaQuery = new EntityMetaQuery(entity.getClass());
-                queryExecutor.execute(metaQuery.buildInsert(), metaQuery.extractInsertParams(entity));
-            }
-
-            actionQueue.clear();
-
-            for (var dirty : persistenceContext.getDirtyEntities()) {
-                EntityMetaQuery metaQuery = new EntityMetaQuery(dirty.entityClass());
-                queryExecutor.execute(metaQuery.buildUpdate(), metaQuery.extractUpdateParams(dirty.entity()));
-            }
-
+            actionQueue.executeActions(persister);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -65,11 +64,21 @@ public class SimpleEntityManager {
         return connection;
     }
 
+    public QueryExecutor getQueryExecutor() {
+        return queryExecutor;
+    }
+
     public EntityTransaction getTransaction() {
         return transaction;
     }
 
     public void close() throws SQLException {
         connection.close();
+    }
+
+    private void checkDirtyEntities() {
+        for (var dirty : persistenceContext.getDirtyEntities()) {
+            actionQueue.addUpdateAction(dirty.entity());
+        }
     }
 }

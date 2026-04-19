@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -254,5 +255,51 @@ class SimpleEntityManagerTest {
         assertEquals(2, countUsers());  // 여전히 기존 2개만
 
         entityManger.getTransaction().commit();
+    }
+
+    @Test
+    void flush는_작업_순서를_보장해야_한다() throws Exception {
+        SimpleEntityManager entityManager = new SimpleEntityManager(connection);
+        entityManager.getTransaction().begin();
+
+        // 1. INSERT: 새 유저 추가
+        entityManager.persist(new User("UserA", 20));
+
+        // 2. UPDATE: 기존 유저 수정
+        User existing = entityManager.find(User.class, 1L);
+        existing.setName("UpdatedJohn");
+
+        // 3. INSERT: 또 다른 유저 추가
+        User userC = new User("UserC", 40);
+        entityManager.persist(userC);
+        entityManager.remove(userC);
+
+        // When
+        entityManager.flush();
+
+        // Then: 기대 순서 INSERT → UPDATE → INSERT
+        List<String> queries = entityManager.getQueryExecutor().getExecutedQueries();
+        assertEquals(4, queries.size());
+        assertTrue(queries.get(0).startsWith("INSERT"), "첫 번째는 INSERT여야 함");
+        assertTrue(queries.get(1).startsWith("UPDATE"), "두 번째는 UPDATE여야 함");
+        assertTrue(queries.get(2).startsWith("INSERT"), "세 번째는 INSERT여야 함");
+        assertTrue(queries.get(3).startsWith("DELETE"), "네 번째는 DELETE여야 함");
+
+        entityManager.getTransaction().commit();
+    }
+
+    @Test
+    void remove로_Entity를_삭제한다() throws Exception {
+        SimpleEntityManager entityManager = new SimpleEntityManager(connection);
+        entityManager.getTransaction().begin();
+        User user = entityManager.find(User.class, 1L);
+
+        entityManager.remove(user);
+        entityManager.flush();
+
+        assertNull(findInDatabase(1L));
+        assertEquals(1, countUsers());
+
+        entityManager.getTransaction().commit();
     }
 }

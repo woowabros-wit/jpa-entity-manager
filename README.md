@@ -41,12 +41,12 @@ Step3
 
 테스트를 통과할 수 있는 객체 만들기
 
-- [ ] persist는_즉시_실행되지_않는다()
-- [ ] flush_시점에_INSERT가_실행된다()
-- [ ] 여러_persist를_모아서_실행한다()
-- [ ] 조회한_Entity_수정_시_자동_UPDATE()
-- [ ] 변경되지_않은_Entity는_UPDATE_안함()
-- [ ] Transient_Entity는_persist_필요()
+- [V] persist는_즉시_실행되지_않는다()
+- [V] flush_시점에_INSERT가_실행된다()
+- [V] 여러_persist를_모아서_실행한다()
+- [V] 조회한_Entity_수정_시_자동_UPDATE()
+- [V] 변경되지_않은_Entity는_UPDATE_안함()
+- [V] Transient_Entity는_persist_필요()
 
 
 ## 기능 요구 사항
@@ -56,3 +56,23 @@ Step3
 - 자동 변경 감지
 - 1주차 InsertQueryBuilder 재사용
 - 역할과 책임을 충분히 생각해 보기
+
+--
+
+요구사항3 - 순서 보장
+
+현재는 INSERT만 있지만, 나중에 UPDATE, DELETE가 추가되면?
+
+문제점
+
+flush 에서 INSERT 와 UPDATE 건만 처리하고 있는데, 만약 
+
+```
+em.persist(userA);           // 1. INSERT
+userB.setName("Updated");    // 2. UPDATE  
+em.persist(userC);           // 3. INSERT
+em.remove(userD);            // 4. DELETE (나중에 추가된다면)
+```
+
+이렇게 되면 기대와 달리, INSERT 2번, UPDATE, DELETE 동작됨.
+
