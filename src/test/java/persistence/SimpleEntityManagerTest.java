@@ -47,8 +47,8 @@ class SimpleEntityManagerTest {
             stmt.execute("DELETE FROM users");
             stmt.execute("ALTER TABLE users ALTER COLUMN id RESTART WITH 1");
 
-            stmt.execute("INSERT INTO users (id, name, age) VALUES (1, 'John', 30)");
-            stmt.execute("INSERT INTO users (id, name, age) VALUES (2, 'Alice', 25)");
+            stmt.execute("INSERT INTO users (name, age) VALUES ('John', 30)");
+            stmt.execute("INSERT INTO users (name, age) VALUES ('Alice', 25)");
         }
     }
 
@@ -133,6 +133,8 @@ class SimpleEntityManagerTest {
         User user = new User("NewUser", 25);
         entityManager.persist(user);
 
+        assertNull(findInDatabase(3L));
+
         // When
         entityManager.flush();
 
@@ -153,6 +155,9 @@ class SimpleEntityManagerTest {
         for (int i = 0; i < 100; i++) {
             entityManager.persist(new User("User" + i, 20 + i));
         }
+
+        assertEquals(2, countUsers());
+
         entityManager.flush();  // 한 번에 실행!
 
         // Then

@@ -19,6 +19,10 @@ public class Transaction {
     }
 
     public void rollback() {
-
+        try {
+            connection.rollback();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
