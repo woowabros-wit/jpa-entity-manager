@@ -4,22 +4,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class PersistenceCacheManager {
-    private final Map<Class<?>, Map<Object, Object>> cache;
+    private final Map<EntityKey, Object> entityMap;
 
     public PersistenceCacheManager() {
-        this.cache = new LinkedHashMap<>();;
+        this.entityMap = new LinkedHashMap<>();
     }
 
     public <T> T get(Class<T> entityClass, Object key) {
-        return cache.get(entityClass) != null ? (T) cache.get(entityClass).get(key) : null;
+        EntityKey entityKey = new EntityKey(entityClass, key);
+        Object entity = entityMap.get(entityKey);
+        return entity != null ? (T) entity : null;
     }
 
     public <T> void save(Class<T> entityClass, Object key, T entity) {
-        Map<Object, Object> idObjectMap = cache.get(entityClass);
-        if (idObjectMap == null) {
-            idObjectMap = new LinkedHashMap<>();
-            cache.put(entityClass, idObjectMap);
-        }
-        idObjectMap.put(key, entity);
+        EntityKey entityKey = new EntityKey(entityClass, key);
+        entityMap.put(entityKey, entity);
     }
 }

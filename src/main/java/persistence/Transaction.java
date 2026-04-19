@@ -17,4 +17,8 @@ public class Transaction {
     public void commit() throws SQLException {
         connection.setAutoCommit(true);
     }
+
+    public void rollback() {
+
+    }
 }

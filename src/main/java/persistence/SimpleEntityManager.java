@@ -1,7 +1,8 @@
 package persistence;
 
 
-import java.lang.reflect.Field;
+import entity.User;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -55,5 +56,13 @@ public class SimpleEntityManager {
         T entity = result.get(0);
         persistenceContext.save(entityClass, key, entity);
         return entity;
+    }
+
+    public void persist(User user) {
+
+    }
+
+    public void flush() {
+
     }
 }
