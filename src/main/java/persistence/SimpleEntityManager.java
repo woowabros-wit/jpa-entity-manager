@@ -40,9 +40,8 @@ public class SimpleEntityManager {
             return cached;
         }
 
-
-        String sql = new QueryExtractor()
-                .getSelectQuery(entityClass, key);
+        String sql = new QueryExtractor(entityClass)
+                .getSelectQuery();
 
         List<T> result = executor.query(sql, entityClass, key);
         if (result == null || result.isEmpty()) {

@@ -2,21 +2,27 @@ package persistence;
 
 import java.lang.reflect.Field;
 
-public class QueryExtractor {
-    public <T> String getSelectQuery(Class<T> entityClass, Object key) {
-        String table = getTable(entityClass);
-        String idField = getId(entityClass);
+public class QueryExtractor<T> {
 
+    private final String tableName;
+    private final String idFieldName;
+
+    public QueryExtractor(final Class<T> enttiyClass) {
+        this.tableName = getTable(enttiyClass);
+        this.idFieldName = getId(enttiyClass);
+    }
+
+    public String getSelectQuery() {
         String sql = new SelectQueryBuilder()
                 .select()
-                .from(table)
-                .where(String.format("%s = ?", idField))
+                .from(tableName)
+                .where(String.format("%s = ?", idFieldName))
                 .build();
 
         return sql;
     }
 
-    private <T> String getId(Class<T> entityClass) {
+    private String getId(Class<T> entityClass) {
         Field[] fields = entityClass.getDeclaredFields();
 
         for (Field field : fields) {
@@ -28,7 +34,7 @@ public class QueryExtractor {
         throw new IllegalArgumentException("ID 필드가 존재하지 않습니다.");
     }
 
-    private <T> String getTable(Class<T> entityClass) {
+    private String getTable(Class<T> entityClass) {
         Table table = entityClass.getAnnotation(Table.class);
         if (table != null) {
             return table.name();
