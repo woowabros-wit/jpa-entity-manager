@@ -48,6 +48,26 @@ class EntityMetaQueryTest {
         assertArrayEquals(new Object[]{"John", 30}, params);
     }
 
+    @Test
+    void update_쿼리를_생성한다() {
+        EntityMetaQuery query = new EntityMetaQuery(User.class);
+
+        String sql = query.buildUpdate();
+
+        assertEquals("UPDATE users SET name = ?, age = ? WHERE id = ?", sql);
+    }
+
+    @Test
+    void update_파라미터를_추출한다() {
+        EntityMetaQuery query = new EntityMetaQuery(User.class);
+        User user = new User("Updated", 25);
+        user.setId(1L);
+
+        Object[] params = query.extractUpdateParams(user);
+
+        assertArrayEquals(new Object[]{"Updated", 25, 1L}, params);
+    }
+
     @Table(name = "no_id")
     static class NoIdEntity {
         private Long id;

@@ -37,15 +37,50 @@ public class EntityMetaQuery {
     }
 
     public Object[] extractInsertParams(Object entity) {
-        List<Object> params = new ArrayList<>();
+        return extractFieldValues(entity, false);
+    }
+
+    public String buildUpdate() {
+        UpdateQueryBuilder builder = new UpdateQueryBuilder().table(tableName);
         for (Field field : entityClass.getDeclaredFields()) {
             if (!field.isAnnotationPresent(Id.class)) {
+                builder.set(field.getName(), "?");
+            }
+        }
+        builder.where(idColumn + " = ?");
+        return builder.build();
+    }
+
+    public Object[] extractUpdateParams(Object entity) {
+        List<Object> params = new ArrayList<>(List.of(extractFieldValues(entity, false)));
+        params.add(extractIdValue(entity));
+        return params.toArray();
+    }
+
+    public Object extractIdValue(Object entity) {
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Id.class)) {
                 field.setAccessible(true);
                 try {
-                    params.add(field.get(entity));
+                    return field.get(entity);
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
+            }
+        }
+        throw new IllegalStateException("Id Annotation 없음");
+    }
+
+
+    private Object[] extractFieldValues(Object entity, boolean includeId) {
+        List<Object> params = new ArrayList<>();
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (!includeId && field.isAnnotationPresent(Id.class)) continue;
+            field.setAccessible(true);
+            try {
+                params.add(field.get(entity));
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
             }
         }
         return params.toArray();

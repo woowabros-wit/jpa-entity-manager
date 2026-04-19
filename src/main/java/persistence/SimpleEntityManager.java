@@ -43,17 +43,22 @@ public class SimpleEntityManager {
     }
 
     public void flush() {
-        for (Object entity : actionQueue) {
-            EntityMetaQuery metaQuery = new EntityMetaQuery(entity.getClass());
-            String sql = metaQuery.buildInsert();
-            Object[] params = metaQuery.extractInsertParams(entity);
-            try {
-                queryExecutor.execute(sql, params);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
+        try {
+            for (Object entity : actionQueue) {
+                EntityMetaQuery metaQuery = new EntityMetaQuery(entity.getClass());
+                queryExecutor.execute(metaQuery.buildInsert(), metaQuery.extractInsertParams(entity));
             }
+
+            actionQueue.clear();
+
+            for (var dirty : persistenceContext.getDirtyEntities()) {
+                EntityMetaQuery metaQuery = new EntityMetaQuery(dirty.entityClass());
+                queryExecutor.execute(metaQuery.buildUpdate(), metaQuery.extractUpdateParams(dirty.entity()));
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
-        actionQueue.clear();
     }
 
     public Connection getConnection() {

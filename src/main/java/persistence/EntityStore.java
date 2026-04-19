@@ -14,4 +14,8 @@ public class EntityStore {
     public void put(Object id, Object entity) {
         entities.put(id, entity);
     }
+
+    public Map<Object, Object> getAll() {
+        return entities;
+    }
 }
