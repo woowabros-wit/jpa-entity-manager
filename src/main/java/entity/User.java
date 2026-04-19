@@ -15,6 +15,11 @@ public class User {
     // 기본 생성자 필수!
     public User() {}
 
+    public User(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
     // Getters/Setters...
     public Long getId() {
         return id;

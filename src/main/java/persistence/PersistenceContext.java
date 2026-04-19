@@ -1,15 +1,10 @@
 package persistence;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 public class PersistenceContext {
 
     private final PersistenceCacheManager cacheManager;
-    private final Map<Class<?>, Map<Object, Object>> cache;
 
     public PersistenceContext() {
-        this.cache = new LinkedHashMap<>();
         this.cacheManager = new PersistenceCacheManager();
     }
 

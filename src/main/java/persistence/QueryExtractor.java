@@ -1,22 +1,61 @@
 package persistence;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
-public class QueryExtractor {
-    public <T> String getSelectQuery(Class<T> entityClass, Object key) {
-        String table = getTable(entityClass);
-        String idField = getId(entityClass);
+public class QueryExtractor<T> {
 
-        String sql = new SelectQueryBuilder()
-                .select()
-                .from(table)
-                .where(String.format("%s = ?", idField))
-                .build();
+    private final Class<T> entityClass;
+    private final String tableName;
+    private final String idFieldName;
 
-        return sql;
+    public QueryExtractor(final Class<T> entityClass) {
+        this.entityClass = entityClass;
+        this.tableName = getTable(entityClass);
+        this.idFieldName = getId(entityClass);
     }
 
-    private <T> String getId(Class<T> entityClass) {
+    public String getSelectQuery() {
+        return new SelectQueryBuilder()
+                .select()
+                .from(tableName)
+                .where(String.format("%s = ?", idFieldName))
+                .build();
+    }
+
+    public String getInsertQuery(Object entity) throws Exception {
+        InsertQueryBuilder builder = new InsertQueryBuilder().into(tableName);
+        for (Field field : insertableFields(entity)) {
+            builder.value(field.getName(), "?");
+        }
+        return builder.build();
+    }
+
+    public Object[] getInsertParams(Object entity) throws Exception {
+        List<Object> params = new ArrayList<>();
+        for (Field field : insertableFields(entity)) {
+            params.add(field.get(entity));
+        }
+        return params.toArray();
+    }
+
+    private List<Field> insertableFields(Object entity) throws IllegalAccessException {
+        List<Field> fields = new ArrayList<>();
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Id.class)) {
+                continue;
+            }
+            field.setAccessible(true);
+            if (field.get(entity) == null) {
+                continue;
+            }
+            fields.add(field);
+        }
+        return fields;
+    }
+
+    private String getId(Class<T> entityClass) {
         Field[] fields = entityClass.getDeclaredFields();
 
         for (Field field : fields) {
@@ -28,7 +67,7 @@ public class QueryExtractor {
         throw new IllegalArgumentException("ID 필드가 존재하지 않습니다.");
     }
 
-    private <T> String getTable(Class<T> entityClass) {
+    private String getTable(Class<T> entityClass) {
         Table table = entityClass.getAnnotation(Table.class);
         if (table != null) {
             return table.name();
