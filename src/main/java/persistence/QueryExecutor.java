@@ -4,15 +4,21 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class QueryExecutor {
     private final Connection connection;
     private final ResultSetMapper mapper;
+    private final List<String> executedQueries = new ArrayList<>();
 
     public QueryExecutor(Connection connection) {
         this.connection = connection;
         this.mapper = new ResultSetMapper();
+    }
+
+    public List<String> getExecutedQueries() {
+        return executedQueries;
     }
 
     /**
@@ -46,6 +52,7 @@ public class QueryExecutor {
      * INSERT/UPDATE/DELETE 실행
      */
     public int execute(String sql, Object... params) throws SQLException {
+        executedQueries.add(sql);
         PreparedStatement pstm = connection.prepareStatement(sql);
         for (int i = 0; i < params.length; i++) {
             pstm.setObject(i + 1, params[i]);

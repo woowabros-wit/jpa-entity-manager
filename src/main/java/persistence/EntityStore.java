@@ -14,4 +14,12 @@ public class EntityStore {
     public void put(Object id, Object entity) {
         entities.put(id, entity);
     }
+
+    public void remove(Object id) {
+        entities.remove(id);
+    }
+
+    public Map<Object, Object> getAll() {
+        return entities;
+    }
 }
