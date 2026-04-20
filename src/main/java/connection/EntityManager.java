@@ -9,9 +9,11 @@ import java.sql.SQLException;
 public class EntityManager {
 
     private final Connection connection;
+    private Transaction transaction;
 
     public EntityManager(Connection connection) {
         this.connection = connection;
+        this.transaction = new Transaction(this.connection);
     }
 
     public void close() throws SQLException {
@@ -23,6 +25,8 @@ public class EntityManager {
     }
 
     public Transaction getTransaction() {
-        return new Transaction(connection);
+        return this.transaction;
     }
+
+
 }
