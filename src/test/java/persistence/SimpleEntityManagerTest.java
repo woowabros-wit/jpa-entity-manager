@@ -189,4 +189,58 @@ class SimpleEntityManagerTest {
             return 0;
         }
     }
+
+
+    @Test
+    void 조회한_Entity_수정_시_자동_UPDATE() throws Exception {
+        // Given
+        SimpleEntityManager entityManger = new SimpleEntityManager(connection);
+        entityManger.getTransaction().begin();
+        User user = entityManger.find(User.class, 1L);
+
+        // When
+        user.setName("Updated");  // 수정만 함
+        entityManger.flush();
+
+        // Then
+        User found = findInDatabase(1L);
+        assertEquals("Updated", found.getName());
+
+        entityManger.getTransaction().commit();
+    }
+
+    @Test
+    void 변경되지_않은_Entity는_UPDATE_안함() throws Exception {
+        // Given
+        SimpleEntityManager entityManger = new SimpleEntityManager(connection);
+        entityManger.getTransaction().begin();
+        User user = entityManger.find(User.class, 1L);
+
+        // When
+        entityManger.flush();
+
+        // Then
+        // UPDATE 실행 안 됨 (로그 확인)
+
+        entityManger.getTransaction().commit();
+    }
+
+    @Test
+    void Transient_Entity는_persist_필요() throws Exception {
+        // Given
+        SimpleEntityManager entityManger = new SimpleEntityManager(connection);
+        entityManger.getTransaction().begin();
+        User user = new User("New", 30);  // new로 생성
+
+        // When
+        user.setName("Modified");
+        entityManger.flush();
+
+        // Then
+        // UPDATE 실행 안 됨 (Transient 상태)
+        // persist()를 호출해야 저장됨
+        assertEquals(2, countUsers());  // 여전히 기존 2개만
+
+        entityManger.getTransaction().commit();
+    }
 }

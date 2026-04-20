@@ -1,6 +1,5 @@
 package persistence;
 
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -62,10 +61,13 @@ public class SimpleEntityManager {
         persistQueue.add(entity);
     }
 
-    public void flush() {
+    public void flush() throws Exception {
+        persistenceContext.flush(connection);
+
         for (Object entity : persistQueue) {
             insert(entity);
         }
+
         persistQueue.clear();
     }
 
@@ -78,6 +80,5 @@ public class SimpleEntityManager {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
 }
