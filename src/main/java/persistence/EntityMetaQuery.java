@@ -1,41 +1,63 @@
 package persistence;
 
-import persistence.annotation.Id;
-import persistence.annotation.Table;
-
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 public class EntityMetaQuery {
 
-    private final String tableName;
-    private final String idColumn;
+    private final EntityMetadata metadata;
 
     public EntityMetaQuery(Class<?> entityClass) {
-        this.tableName = resolveTableName(entityClass);
-        this.idColumn = resolveIdColumn(entityClass);
+        this.metadata = EntityMetadata.of(entityClass);
     }
 
     public String buildFindById() {
         return new SelectQueryBuilder()
                 .select("*")
-                .from(tableName)
-                .build() + " WHERE " + idColumn + " = ?";
+                .from(metadata.getTableName())
+                .build() + " WHERE " + metadata.getIdColumnName() + " = ?";
     }
 
-    private String resolveTableName(Class<?> entityClass) {
-        Table table = entityClass.getAnnotation(Table.class);
-        if (table != null && !table.name().isEmpty()) {
-            return table.name();
+    public String buildInsert() {
+        InsertQueryBuilder builder = new InsertQueryBuilder().into(metadata.getTableName());
+        for (Field field : metadata.getColumnFields()) {
+            builder.value(field.getName(), "?");
         }
-        throw new IllegalStateException("Table Annotation 없음");
+        return builder.build();
     }
 
-    private String resolveIdColumn(Class<?> entityClass) {
-        for (Field field : entityClass.getDeclaredFields()) {
-            if (field.isAnnotationPresent(Id.class)) {
-                return field.getName();
-            }
+    public Object[] extractInsertParams(Object entity) {
+        return metadata.getColumnValues(entity);
+    }
+
+    public String buildUpdate() {
+        UpdateQueryBuilder builder = new UpdateQueryBuilder().table(metadata.getTableName());
+        for (Field field : metadata.getColumnFields()) {
+            builder.set(field.getName(), "?");
         }
-        throw new IllegalStateException("Id Annotation 없음");
+        builder.where(metadata.getIdColumnName() + " = ?");
+        return builder.build();
+    }
+
+    public Object[] extractUpdateParams(Object entity) {
+        List<Object> params = new ArrayList<>(List.of(metadata.getColumnValues(entity)));
+        params.add(metadata.getIdValue(entity));
+        return params.toArray();
+    }
+
+    public Object extractIdValue(Object entity) {
+        return metadata.getIdValue(entity);
+    }
+
+    public String buildDelete() {
+        return new DeleteQueryBuilder()
+                .from(metadata.getTableName())
+                .where(metadata.getIdColumnName() + " = ?")
+                .build();
+    }
+
+    public Object[] extractDeleteParams(Object entity) {
+        return new Object[]{metadata.getIdValue(entity)};
     }
 }

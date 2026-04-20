@@ -1,3 +1,5 @@
+package persistence;
+
 import jakarta.persistence.EntityTransaction;
 import persistence.PersistenceContext;
 

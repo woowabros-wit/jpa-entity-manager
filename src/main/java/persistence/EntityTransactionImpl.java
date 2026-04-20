@@ -1,9 +1,11 @@
+package persistence;
+
 import jakarta.persistence.RollbackException;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
-class EntityTransactionImpl implements jakarta.persistence.EntityTransaction {
+public class EntityTransactionImpl implements jakarta.persistence.EntityTransaction {
 
     private final Connection connection;
     private boolean active;

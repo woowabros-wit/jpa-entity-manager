@@ -3,6 +3,7 @@ package persistence;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import persistence.fixture.User;
+import persistence.fixture.User2;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -47,11 +48,11 @@ class PersistenceContextTest {
     @Test
     void 다른_타입_같은_ID는_서로_영향을_주지_않는다() {
         User user = new User();
-        String other = "other";
+        User2 user2 = new User2();
         pc.put(User.class, 1L, user);
-        pc.put(String.class, 1L, other);
+        pc.put(User2.class, 1L, user2);
 
         assertSame(user, pc.get(User.class, 1L));
-        assertSame(other, pc.get(String.class, 1L));
+        assertSame(user2, pc.get(User2.class, 1L));
     }
 }
