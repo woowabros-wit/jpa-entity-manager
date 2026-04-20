@@ -7,25 +7,23 @@ import java.util.List;
 public class QueryExtractor<T> {
 
     private final Class<T> entityClass;
-    private final String tableName;
-    private final String idFieldName;
+    private final EntityMetadata metadata;
 
     public QueryExtractor(final Class<T> entityClass) {
         this.entityClass = entityClass;
-        this.tableName = getTable(entityClass);
-        this.idFieldName = getId(entityClass);
+        this.metadata = EntityMetadata.of(entityClass);
     }
 
     public String getSelectQuery() {
         return new SelectQueryBuilder()
                 .select()
-                .from(tableName)
-                .where(String.format("%s = ?", idFieldName))
+                .from(metadata.getTableName())
+                .where(String.format("%s = ?", metadata.getIdColumnName()))
                 .build();
     }
 
     public String getInsertQuery(Object entity) throws Exception {
-        InsertQueryBuilder builder = new InsertQueryBuilder().into(tableName);
+        InsertQueryBuilder builder = new InsertQueryBuilder().into(metadata.getTableName());
         for (Field field : insertableFields(entity)) {
             builder.value(field.getName(), "?");
         }
@@ -65,14 +63,5 @@ public class QueryExtractor<T> {
         }
 
         throw new IllegalArgumentException("ID 필드가 존재하지 않습니다.");
-    }
-
-    private String getTable(Class<T> entityClass) {
-        Table table = entityClass.getAnnotation(Table.class);
-        if (table != null) {
-            return table.name();
-        }
-
-        return entityClass.getSimpleName().toLowerCase() + "s";
     }
 }

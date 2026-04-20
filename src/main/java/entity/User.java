@@ -1,8 +1,10 @@
 package entity;
 
 import persistence.Id;
+import persistence.Table;
 
 // Entity 클래스
+@Table(name = "users")
 public class User {
     @Id
     private Long id;
