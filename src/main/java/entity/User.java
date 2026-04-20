@@ -1,8 +1,10 @@
 package entity;
 
 import persistence.Id;
+import persistence.Table;
 
 // Entity 클래스
+@Table(name = "users")
 public class User {
     @Id
     private Long id;
@@ -13,7 +15,21 @@ public class User {
     private Integer height;
 
     // 기본 생성자 필수!
-    public User() {}
+    public User() {
+        this(null, null, null, null, null);
+    }
+
+    public User(String name, int age) {
+        this(null, name, age, null, null);
+    }
+
+    public User(final Long id, final String name, final Integer age, final String email, final Integer height) {
+        this.id = id;
+        this.name = name;
+        this.age = age;
+        this.email = email;
+        this.height = height;
+    }
 
     // Getters/Setters...
     public Long getId() {

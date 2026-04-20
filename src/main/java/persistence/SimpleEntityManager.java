@@ -1,20 +1,21 @@
 package persistence;
 
-
-import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleEntityManager {
     private final Connection connection;
     private final QueryExecutor executor;
-    private PersistenceContext persistenceContext;
+    private final PersistenceContext persistenceContext;
+    private final List<Object> persistQueue;
 
     public SimpleEntityManager(Connection connection) {
         this.connection = connection;
-        executor = new QueryExecutor(connection);
-        persistenceContext = new PersistenceContext();
+        this.executor = new QueryExecutor(connection);
+        this.persistenceContext = new PersistenceContext();
+        this.persistQueue = new ArrayList<>();
     }
 
     public Connection getConnection() {
@@ -39,9 +40,8 @@ public class SimpleEntityManager {
             return cached;
         }
 
-
-        String sql = new QueryExtractor()
-                .getSelectQuery(entityClass, key);
+        String sql = new QueryExtractor(entityClass)
+                .getSelectQuery();
 
         List<T> result = executor.query(sql, entityClass, key);
         if (result == null || result.isEmpty()) {
@@ -55,5 +55,30 @@ public class SimpleEntityManager {
         T entity = result.get(0);
         persistenceContext.save(entityClass, key, entity);
         return entity;
+    }
+
+    public void persist(Object entity) {
+        persistQueue.add(entity);
+    }
+
+    public void flush() throws Exception {
+        persistenceContext.flush(connection);
+
+        for (Object entity : persistQueue) {
+            insert(entity);
+        }
+
+        persistQueue.clear();
+    }
+
+    private void insert(Object entity) {
+        try {
+            QueryExtractor extractor = new QueryExtractor(entity.getClass());
+            String sql = extractor.getInsertQuery(entity);
+            Object[] params = extractor.getInsertParams(entity);
+            executor.execute(sql, params);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
