@@ -26,7 +26,7 @@ class SimpleEntityManagerTest {
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(
                     "CREATE TABLE users (" +
-                            "  id BIGINT PRIMARY KEY," +
+                            "  id BIGINT AUTO_INCREMENT PRIMARY KEY," +
                             "  name VARCHAR(100)," +
                             "  age INT" +
                             ")"
@@ -45,8 +45,10 @@ class SimpleEntityManagerTest {
     void insertTestData() throws SQLException {
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("DELETE FROM users");
-            stmt.execute("INSERT INTO users (id, name, age) VALUES (1, 'John', 30)");
-            stmt.execute("INSERT INTO users (id, name, age) VALUES (2, 'Alice', 25)");
+            stmt.execute("ALTER TABLE users ALTER COLUMN id RESTART WITH 1");
+
+            stmt.execute("INSERT INTO users (name, age) VALUES ('John', 30)");
+            stmt.execute("INSERT INTO users (name, age) VALUES ('Alice', 25)");
         }
     }
 

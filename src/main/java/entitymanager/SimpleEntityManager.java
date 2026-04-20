@@ -2,17 +2,14 @@ package entitymanager;
 
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import persistence.query.InsertQueryBuilder;
 import persistence.query.ResultSetMapper;
 import persistence.query.SelectQueryBuilder;
-import persistence.query.UpdateQueryBuilder;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +18,14 @@ import java.util.Objects;
 public class SimpleEntityManager {
     private final Connection connection;
     private final PersistenceContext persistenceContext;
+    private final ActionQueue actionQueue;
     private final EntityTransaction transaction;
     private final ResultSetMapper resultSetMapper;
 
     public SimpleEntityManager(Connection connection) {
         this.connection = connection;
         this.persistenceContext = new PersistenceContext();
+        this.actionQueue = new ActionQueue();
         this.transaction = new EntityTransaction(connection);
         this.resultSetMapper = new ResultSetMapper();
     }
@@ -60,12 +59,12 @@ public class SimpleEntityManager {
     }
 
     public void persist(Object entity) {
-        persistenceContext.addNewEntity(entity);
+        actionQueue.addInsertion(new InsertAction(connection, entity));
     }
 
     public void flush() throws Exception {
-        flushInserts();
-        flushDirtyChecking();
+        detectDirtyEntities();
+        executeActionQueue();
     }
 
     public EntityTransaction getTransaction() {
@@ -87,36 +86,7 @@ public class SimpleEntityManager {
         }
     }
 
-    private void flushInserts() throws Exception {
-        List<Object> newEntities = persistenceContext.getNewEntities();
-        if (newEntities.isEmpty()) {
-            return;
-        }
-
-        long nextId = -1;
-        String lastTableName = null;
-
-        for (Object entity : newEntities) {
-            Class<?> entityClass = entity.getClass();
-            String tableName = resolveTableName(entityClass);
-            Field idField = resolveIdField(entityClass);
-            idField.setAccessible(true);
-
-            if (idField.get(entity) == null) {
-                if (!tableName.equals(lastTableName)) {
-                    nextId = getNextId(tableName);
-                    lastTableName = tableName;
-                }
-                idField.set(entity, nextId++);
-            }
-
-            executeInsert(entity, entityClass, tableName);
-        }
-
-        persistenceContext.clearNewEntities();
-    }
-
-    private void flushDirtyChecking() throws Exception {
+    private void detectDirtyEntities() throws IllegalAccessException {
         Map<Class<?>, Map<Object, Object>> managedEntities = persistenceContext.getManagedEntities();
 
         for (Map.Entry<Class<?>, Map<Object, Object>> classEntry : managedEntities.entrySet()) {
@@ -133,10 +103,14 @@ public class SimpleEntityManager {
 
                 List<String> dirtyFields = findDirtyFields(entity, entityClass, snapshot);
                 if (!dirtyFields.isEmpty()) {
-                    executeUpdate(entity, entityClass, id, dirtyFields);
+                    actionQueue.addUpdate(new UpdateAction(connection, entity, id, dirtyFields));
                 }
             }
         }
+    }
+
+    private void executeActionQueue() throws Exception {
+        actionQueue.executeAll();
     }
 
     private List<String> findDirtyFields(Object entity, Class<?> entityClass, Map<String, Object> snapshot) throws IllegalAccessException {
@@ -156,69 +130,6 @@ public class SimpleEntityManager {
         }
 
         return dirtyFields;
-    }
-
-    private void executeUpdate(Object entity, Class<?> entityClass, Object id, List<String> dirtyFields) throws Exception {
-        String tableName = resolveTableName(entityClass);
-        String idColumnName = resolveIdColumnName(entityClass);
-
-        UpdateQueryBuilder builder = new UpdateQueryBuilder()
-                .table(tableName)
-                .where(idColumnName + " = ?");
-
-        List<Object> params = new ArrayList<>();
-        for (String fieldName : dirtyFields) {
-            Field field = entityClass.getDeclaredField(fieldName);
-            field.setAccessible(true);
-            builder.set(fieldName, "?");
-            params.add(field.get(entity));
-        }
-        params.add(id);
-
-        String sql = builder.build();
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
-            pstmt.executeUpdate();
-        }
-    }
-
-    private void executeInsert(Object entity, Class<?> entityClass, String tableName) throws Exception {
-        InsertQueryBuilder builder = new InsertQueryBuilder().into(tableName);
-        List<Object> params = new ArrayList<>();
-
-        for (Field field : entityClass.getDeclaredFields()) {
-            field.setAccessible(true);
-            Object value = field.get(entity);
-            if (value == null) {
-                continue;
-            }
-            builder.value(field.getName(), "?");
-            params.add(value);
-        }
-
-        String sql = builder.build();
-
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            for (int i = 0; i < params.size(); i++) {
-                pstmt.setObject(i + 1, params.get(i));
-            }
-            pstmt.executeUpdate();
-        }
-    }
-
-    private long getNextId(String tableName) throws SQLException {
-        String sql = "SELECT MAX(id) FROM " + tableName;
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) {
-                long maxId = rs.getLong(1);
-                return rs.wasNull() ? 1L : maxId + 1;
-            }
-            return 1L;
-        }
     }
 
     private String resolveTableName(Class<?> entityClass) {
