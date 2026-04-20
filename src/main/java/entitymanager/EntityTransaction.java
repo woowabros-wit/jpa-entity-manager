@@ -26,4 +26,13 @@ public class EntityTransaction {
             throw new RuntimeException(e);
         }
     }
+
+    public void rollback() {
+        try {
+            connection.rollback();
+            connection.setAutoCommit(true);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

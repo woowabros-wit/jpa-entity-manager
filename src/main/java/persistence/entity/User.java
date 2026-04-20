@@ -1,20 +1,22 @@
 package persistence.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "users")
 public class User {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
     private Integer age;
     private String email;
 
-    // 기본 생성자 필수!
     public User() {
+    }
+
+    public User(String name, Integer age) {
+        this(null, name, age, null);
     }
 
     public User(Long id, String name, Integer age, String email) {
