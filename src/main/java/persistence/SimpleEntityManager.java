@@ -1,48 +1,48 @@
 package persistence;
 
-import annotation.Id;
 import util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleEntityManager implements AutoCloseable {
 
-    private final List<Object> persistTargets = new LinkedList<>();
+    private static final EntityMetaDataCache ENTITY_META_DATA_CACHE = new EntityMetaDataCache();
+
+    private final List<Object> insertTargets = new ArrayList<>();
+    private final PersistenceContext persistenceContext = new PersistenceContext();
 
     private final Connection connection;
-    private final PersistenceContext persistenceContext;
     private final Transaction transaction;
     private final EntityLoader entityLoader;
     private final EntityPersister entityPersister;
 
     public SimpleEntityManager(Connection connection) {
         this.connection = connection;
-        this.persistenceContext = new PersistenceContext();
         this.transaction = new Transaction(connection);
-        this.entityLoader = new EntityLoader(connection);
-        this.entityPersister = new EntityPersister(connection);
+        this.entityLoader = new EntityLoader(connection, ENTITY_META_DATA_CACHE);
+        this.entityPersister = new EntityPersister(connection, ENTITY_META_DATA_CACHE);
     }
 
     public Connection getConnection() {
         return connection;
     }
 
-    public <T> T find(Class<T> entityClass, Long id) {
-        final EntityId entityId = new EntityId(id);
-        final T cached = persistenceContext.get(entityClass, entityId);
+    public <T> T find(Class<T> entityClass, Object id) {
+        final EntityKey entityKey = new EntityKey( entityClass, id);
+        final Object cached = persistenceContext.get(entityKey);
         if (cached != null) {
-            return cached;
+            return entityClass.cast(cached);
         }
 
         final T entity = entityLoader.load(entityClass, id);
         if (entity == null) {
             return null;
         }
-        persistenceContext.put(entityClass, entityId, entity);
+        persistenceContext.put(entityKey, entity);
         return entity;
     }
 
@@ -63,36 +63,41 @@ public class SimpleEntityManager implements AutoCloseable {
     }
 
     public void persist(Object entity) {
-        persistTargets.add(entity);
+        final Class<?> entityClass = entity.getClass();
+        final Object idValue = extractIdValue(entity);
+        if (idValue == null) {
+            insertTargets.add(entity);
+            return;
+        }
+        final Object cached = persistenceContext.get(new EntityKey(entityClass, idValue));
+        if (cached != null) {
+            return;
+        }
+        insertTargets.add(entity);
     }
 
     public void flush() {
-        for (Object target : persistTargets) {
-            final Object idValue = extractIdValue(target);
-            if (idValue == null) {
-                final Object id = entityPersister.insert(target);
-                persistenceContext.put(target.getClass(), new EntityId(id), target);
-                continue;
-            }
+        final List<Object> results = new ArrayList<>();
+        for (Object target : insertTargets) {
+            final Object result = entityPersister.insert(target);
+            results.add(result);
+        }
+        insertTargets.clear();
 
-            final Object cache = persistenceContext.get(target.getClass(), new EntityId(idValue));
-            if (cache != null) {
-                continue;
-            }
+        for (Object modifiedEntity : persistenceContext.getModifiedEntities()) {
+            entityPersister.update(modifiedEntity);
+            results.add(modifiedEntity);
+        }
 
-            final Object id = entityPersister.insert(target);
-            persistenceContext.put(target.getClass(), new EntityId(id), target);
+        for (Object result : results) {
+            persistenceContext.put(new EntityKey(result.getClass(), extractIdValue(result)), result);
         }
     }
 
     private Object extractIdValue(Object target) {
-        for (Field field : target.getClass().getDeclaredFields()) {
-            if (!field.isAnnotationPresent(Id.class)) {
-                continue;
-            }
-            return ReflectionUtils.getValue(field, target);
-        }
-        return null;
+        final EntityMetaData entityMetaData = ENTITY_META_DATA_CACHE.get(target);
+        final Field idField = entityMetaData.getIdField();
+        return ReflectionUtils.getValue(idField, target);
     }
 
 }

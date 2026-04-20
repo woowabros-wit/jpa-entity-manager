@@ -17,6 +17,12 @@ import static java.util.Map.entry;
 
 public class ResultSetMapper {
 
+    private final EntityMetaDataCache entityMetaDataCache;
+
+    public ResultSetMapper(EntityMetaDataCache entityMetaDataCache) {
+        this.entityMetaDataCache = entityMetaDataCache;
+    }
+
     /**
      * ResultSet의 현재 행을 객체로 변환
      * @param rs ResultSet (이미 next() 호출된 상태)
@@ -26,7 +32,7 @@ public class ResultSetMapper {
     public <T> T mapToObject(ResultSet rs, Class<T> targetClass) {
         return wrapException(() -> {
             final ResultSetMetaData metaData = rs.getMetaData();
-            final EntityMetaData entityMetaData = EntityMetaDataCache.get(targetClass);
+            final EntityMetaData entityMetaData = entityMetaDataCache.get(targetClass);
             validateFieldTypes(metaData, entityMetaData);
             return createInstance(rs, targetClass, metaData, entityMetaData);
         });

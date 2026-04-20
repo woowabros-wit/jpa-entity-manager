@@ -1,5 +1,6 @@
 package jdbc;
 
+import persistence.EntityMetaDataCache;
 import query.NamedParameterQuery;
 import util.Preconditions;
 import util.StringUtils;
@@ -9,12 +10,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class QueryExecutor {
-    private final Connection connection;
-    private final ResultSetMapper mapper;
 
-    public QueryExecutor(Connection connection) {
+    private final ResultSetMapper mapper;
+    private final Connection connection;
+
+    public QueryExecutor(Connection connection, EntityMetaDataCache entityMetaDataCache) {
         this.connection = connection;
-        this.mapper = new ResultSetMapper();
+        this.mapper = new ResultSetMapper(entityMetaDataCache);
     }
 
     public <T> T queryForObject(String sql, Class<T> resultClass, Object... params) {

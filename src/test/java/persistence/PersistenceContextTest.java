@@ -21,10 +21,10 @@ class PersistenceContextTest {
     void get() {
         // given
         final Class<User> entityClass = User.class;
-        final EntityId entityId = new EntityId(1L);
+        final EntityKey entityKey = new EntityKey(entityClass, 1L);
 
         // when
-        final User result = persistenceContext.get(entityClass, entityId);
+        final Object result = persistenceContext.get(entityKey);
 
         // then
         assertThat(result).isNull();
@@ -35,14 +35,14 @@ class PersistenceContextTest {
     void put() {
         // given
         final Class<User> entityClass = User.class;
-        final EntityId entityId = new EntityId(1L);
+        final EntityKey entityId = new EntityKey(entityClass, 1L);
         final User user = new User(1L, "test-user", 33);
 
         // when
-        persistenceContext.put(entityClass, entityId, user);
+        persistenceContext.put(entityId, user);
 
         // then
-        final User result = persistenceContext.get(entityClass, entityId);
+        final Object result = persistenceContext.get(entityId);
         assertThat(result).isSameAs(user);
     }
 

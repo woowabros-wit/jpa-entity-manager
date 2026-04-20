@@ -13,4 +13,13 @@ public class ReflectionUtils {
             }
         }
 
+    public static void setValue(Field field, Object target, Object value) {
+        try {
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

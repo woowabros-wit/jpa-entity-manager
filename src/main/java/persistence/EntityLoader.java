@@ -8,17 +8,19 @@ import java.sql.Connection;
 public class EntityLoader {
 
     private final QueryExecutor queryExecutor;
+    private final EntityMetaDataCache entityMetaDataCache;
 
-    public EntityLoader(Connection connection) {
-        this(new QueryExecutor(connection));
+    public EntityLoader(Connection connection, EntityMetaDataCache entityMetaDataCache) {
+        this(new QueryExecutor(connection, entityMetaDataCache), entityMetaDataCache);
     }
 
-    public EntityLoader(QueryExecutor queryExecutor) {
+    public EntityLoader(QueryExecutor queryExecutor, EntityMetaDataCache entityMetaDataCache) {
         this.queryExecutor = queryExecutor;
+        this.entityMetaDataCache = entityMetaDataCache;
     }
 
-    public <T> T load(Class<T> entityClass, Long id) {
-        final EntityMetaData entityMetaData = EntityMetaDataCache.get(entityClass);
+    public <T> T load(Class<T> entityClass, Object id) {
+        final EntityMetaData entityMetaData = entityMetaDataCache.get(entityClass);
         final String tableName = entityMetaData.getTableName();
         final String idColumnName = entityMetaData.getIdColumnName();
 

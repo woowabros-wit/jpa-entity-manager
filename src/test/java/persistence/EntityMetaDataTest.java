@@ -95,6 +95,14 @@ class EntityMetaDataTest {
                 .hasMessage("@Column 의 name 은 필수 입니다. entityClass: [persistence.EntityMetaDataTest$NoColumnNameTestEntity], field: [id]");
     }
 
+    @DisplayName("@Column 의 name 이 중복된 필드가 있으면 에러")
+    @Test
+    void init7() throws Exception {
+        assertThatThrownBy(() -> new EntityMetaData(DuplicateColumnNameTestEntity.class))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("동일한 컬럼명을 가진 필드가 존재합니다. field1: [name1], field2: [name2]");
+    }
+
     @Test
     void getField() throws Exception {
         // given
@@ -178,6 +186,21 @@ class EntityMetaDataTest {
         @Id
         @Column(name = "")
         private Long id;
+
+    }
+
+    @Table(name = "test_table")
+    private static class DuplicateColumnNameTestEntity {
+
+        @Id
+        @Column(name = "id")
+        private Long id;
+
+        @Column(name = "name")
+        private String name1;
+
+        @Column(name = "name")
+        private String name2;
 
     }
 

@@ -40,7 +40,7 @@ class ConnectionOwnershipTest {
         );
 
         // When: 하위 컴포넌트가 Connection 사용
-        QueryExecutor executor = new QueryExecutor(connection);
+        QueryExecutor executor = new QueryExecutor(connection, new EntityMetaDataCache());
         executor.executeQuery("SELECT 1");
 
         // Then: 하위 컴포넌트는 Connection을 닫지 않음
